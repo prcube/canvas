@@ -1,0 +1,3 @@
+- **Frontend**: Vue.js 3, Socket.IO Client
+- **Backend**: Node.js, Express.js, Socket.IO
+- **Build Tool**: Vite
