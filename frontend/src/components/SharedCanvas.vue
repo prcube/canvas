@@ -4,6 +4,7 @@
     width="800"
     height="600"
     @click="handleClick"
+    :style="{ cursor: cursorStyle }"
   />
 </template>
 
@@ -11,10 +12,17 @@
 export default {
   name: 'SharedCanvas',
   inject: ['getSocket'],
+  props: ['selectedTool'],  // App.vue에서 선택된 도구를 받음
 
   computed: {
     actualSocket() {
       return this.getSocket()
+    },
+
+    cursorStyle() {
+      if (this.selectedTool === 'point') return 'crosshair'
+      if (this.selectedTool === 'line') return 'copy'
+      return 'not-allowed'  // 도구 선택 안됨
     }
   },
   
@@ -42,9 +50,12 @@ export default {
     setupSocketListener() {
       this.$watch('actualSocket', (newSocket) => {
         if (newSocket && !this.socketListenerAdded) {
+          console.log('소켓 이벤트 리스너 등록')
+          
           newSocket.on('point', this.drawPoint)
           newSocket.on('canvasState', this.loadCanvasState)
           newSocket.on('clearCanvas', this.handleClearCanvas)
+          
           this.socketListenerAdded = true
         }
       }, { immediate: true })
@@ -52,8 +63,16 @@ export default {
 
     loadCanvasState(points) {
       console.log('기존 캔버스 상태 로드:', points.length + '개 점')
+      
+      if (!points || !Array.isArray(points)) {
+        console.log('유효하지 않은 점 데이터')
+        return
+      }
+      
       points.forEach(point => {
-        this.drawPoint(point, false) // 로그 출력 안함
+        if (point && typeof point.x === 'number' && typeof point.y === 'number') {
+          this.drawPoint(point, false)
+        }
       })
     },
 
@@ -63,9 +82,23 @@ export default {
     },
     
     handleClick(e) {
+      // 도구가 선택되지 않았으면 아무것도 하지 않음
+      if (!this.selectedTool) {
+        console.log('도구가 선택되지 않음 - 클릭 무시')
+        return
+      }
+
       const x = e.offsetX
       const y = e.offsetY
       
+      if (this.selectedTool === 'point') {
+        this.handlePointClick(x, y)
+      } else if (this.selectedTool === 'line') {
+        this.handleLineClick(x, y)
+      }
+    },
+
+    handlePointClick(x, y) {
       console.log('점 찍기:', x, y)
       this.drawPoint({ x, y })
 
@@ -77,8 +110,12 @@ export default {
         this.actualSocket.emit('point', { x, y })
       }
     },
+
+    handleLineClick(x, y) {
+      console.log('선 그리기 준비 중:', x, y)
+      // 선그리기 파트
+    },
     
-    // showLog 파라미터 추가로 로그 제어
     drawPoint(data, showLog = true) {
       if (showLog) {
         console.log('다른 사용자의 점 받음:', data)
@@ -96,6 +133,5 @@ export default {
 canvas {
   border: 2px solid black;
   background: white;
-  cursor: crosshair;
 }
 </style>

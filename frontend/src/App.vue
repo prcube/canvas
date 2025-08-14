@@ -11,8 +11,15 @@
     </div>
     <div class="controls">
       <button @click="clearCanvas" class="clear-btn">지우기</button>
+      <button @click="selectTool('point')" :class="{ active: selectedTool === 'point' }" class="tool-btn">점</button>
+      <button @click="selectTool('line')" :class="{ active: selectedTool === 'line' }" class="tool-btn">선</button>
     </div>
-    <SharedCanvas v-if="connected" />
+    <div class="tool-info">
+      <span v-if="selectedTool === null">도구를 선택하세요</span>
+      <span v-else-if="selectedTool === 'point'">점 찍기 모드</span>
+      <span v-else-if="selectedTool === 'line'">선 그리기 모드</span>
+    </div>
+    <SharedCanvas v-if="connected" :selectedTool="selectedTool" />
     <div v-else class="loading">캔버스 로딩 중...</div>
   </div>
 </template>
@@ -31,7 +38,8 @@ export default {
     return {
       socket: null,
       connected: false,
-      userCount: 0
+      userCount: 0,
+      selectedTool: null  // 초기에는 아무 도구도 선택 안됨
     }
   },
 
@@ -79,13 +87,18 @@ export default {
       this.connected = false
     },
 
-    // 캔버스 지우기 기능 추가
     clearCanvas() {
       console.log('앱에서 캔버스 지우기 버튼 클릭')
       if (this.socket?.connected) {
         this.socket.emit('clearCanvas')
         console.log('캔버스 지우기 신호 전송')
       }
+    },
+
+    // 도구 선택 기능 추가
+    selectTool(tool) {
+      this.selectedTool = tool
+      console.log(`도구 선택됨: ${tool}`)
     }
   }
 }
@@ -121,8 +134,11 @@ h1 {
 .disconnected { color: #dc3545; }
 
 .controls {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
 }
+
 
 .loading {
   color: #666;
