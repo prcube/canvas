@@ -9,8 +9,8 @@
         서버 연결 안됨
       </span>
     </div>
-    <div>
-      <button>지우기</button>
+    <div class="controls">
+      <button @click="clearCanvas" class="clear-btn">지우기</button>
     </div>
     <SharedCanvas v-if="connected" />
     <div v-else class="loading">캔버스 로딩 중...</div>
@@ -77,6 +77,15 @@ export default {
     handleConnectError(error) {
       console.error('연결 실패:', error.message)
       this.connected = false
+    },
+
+    // 캔버스 지우기 기능 추가
+    clearCanvas() {
+      console.log('앱에서 캔버스 지우기 버튼 클릭')
+      if (this.socket?.connected) {
+        this.socket.emit('clearCanvas')
+        console.log('캔버스 지우기 신호 전송')
+      }
     }
   }
 }
@@ -110,6 +119,10 @@ h1 {
 
 .connected { color: #28a745; }
 .disconnected { color: #dc3545; }
+
+.controls {
+  margin-bottom: 20px;
+}
 
 .loading {
   color: #666;

@@ -22,7 +22,7 @@ export default {
     return {
       canvas: null,
       ctx: null,
-      socketListenerAdded: false  // 중복 리스너 방지
+      socketListenerAdded: false
     }
   },
   
@@ -43,9 +43,23 @@ export default {
       this.$watch('actualSocket', (newSocket) => {
         if (newSocket && !this.socketListenerAdded) {
           newSocket.on('point', this.drawPoint)
+          newSocket.on('canvasState', this.loadCanvasState)
+          newSocket.on('clearCanvas', this.handleClearCanvas)
           this.socketListenerAdded = true
         }
       }, { immediate: true })
+    },
+
+    loadCanvasState(points) {
+      console.log('기존 캔버스 상태 로드:', points.length + '개 점')
+      points.forEach(point => {
+        this.drawPoint(point, false) // 로그 출력 안함
+      })
+    },
+
+    handleClearCanvas() {
+      console.log('캔버스 지우기 신호 받음')
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
     },
     
     handleClick(e) {
@@ -64,8 +78,11 @@ export default {
       }
     },
     
-    drawPoint(data) {
-      console.log('다른 사용자의 점 받음:', data) 
+    // showLog 파라미터 추가로 로그 제어
+    drawPoint(data, showLog = true) {
+      if (showLog) {
+        console.log('다른 사용자의 점 받음:', data)
+      }
       this.ctx.beginPath()
       this.ctx.arc(data.x, data.y, 3, 0, 2 * Math.PI)
       this.ctx.fillStyle = '#ff0000'
