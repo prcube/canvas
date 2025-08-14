@@ -19,8 +19,8 @@ io.on('connection', (socket) => {
   
   io.emit('userCount', userCount);
 
-  socket.on('draw', (data) => {
-    socket.broadcast.emit('draw', data);
+  socket.on('point', (data) => {
+    socket.broadcast.emit('point', data);
   });
 
   socket.on('disconnect', () => {
@@ -30,6 +30,6 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3000, '0.0.0.0', () => {
+server.listen(3000, () => {
   console.log('서버 실행 중: http://localhost:3000');
 });

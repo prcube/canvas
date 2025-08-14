@@ -1,4 +1,3 @@
-<!-- App.vue -->
 <template>
   <div class="app">
     <h1>공유 캔버스</h1>
@@ -10,7 +9,10 @@
         서버 연결 안됨
       </span>
     </div>
-    <SharedCanvas v-if="socket && connected" />
+    <div>
+      <button>지우기</button>
+    </div>
+    <SharedCanvas v-if="connected" />
     <div v-else class="loading">캔버스 로딩 중...</div>
   </div>
 </template>
@@ -24,6 +26,7 @@ export default {
   components: {
     SharedCanvas
   },
+
   data() {
     return {
       socket: null,
@@ -31,35 +34,49 @@ export default {
       userCount: 0
     }
   },
-  mounted() {
-    // 소켓 연결 설정 개선
-    this.socket = io('http://localhost:3000', {
-      transports: ['websocket', 'polling'],
-      withCredentials: true
-    })
-    
-    this.socket.on('connect', () => {
-      console.log('서버에 연결됨:', this.socket.id)
-      this.connected = true
-    })
-    
-    this.socket.on('disconnect', () => {
-      console.log('서버 연결 해제')
-      this.connected = false
-    })
-    
-    this.socket.on('connect_error', (error) => {
-      console.error('연결 실패:', error.message)
-      this.connected = false
-    })
-    
-    this.socket.on('userCount', (count) => {
-      this.userCount = count
-    })
-  },
+
   provide() {
     return {
-      socket: this.socket
+      getSocket: () => this.socket
+    }
+  },
+
+  mounted() {    
+    this.initSocket()
+  },
+
+  methods: {
+    initSocket() {
+      this.socket = io('http://localhost:3000')
+      this.setupSocketListeners()
+    },
+
+    setupSocketListeners() {
+      this.socket.on('connect', this.handleConnect)
+      this.socket.on('userCount', this.handleUserCount)
+      this.socket.on('disconnect', this.handleDisconnect)
+      this.socket.on('connect_error', this.handleConnectError)
+    },
+
+    handleConnect() {
+      console.log('서버에 연결됨:', this.socket.id)
+      this.connected = true
+    },
+
+    handleUserCount(count) {
+      console.log('사람 수 카운트:', this.socket.id)
+      this.userCount = count
+      console.log(count)
+    },
+
+    handleDisconnect() {
+      console.log('서버 연결 해제')
+      this.connected = false
+    },
+
+    handleConnectError(error) {
+      console.error('연결 실패:', error.message)
+      this.connected = false
     }
   }
 }
@@ -99,12 +116,5 @@ h1 {
   font-size: 16px;
   margin: 20px;
   padding: 40px;
-  border: 2px dashe
-}
-
-.info {
-  margin-top: 20px;
-  color: #666;
-  font-size: 14px;
 }
 </style>
