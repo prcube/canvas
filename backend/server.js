@@ -12,7 +12,7 @@ const io = new Server(server, {
 });
 
 let userCount = 0;
-const canvasState = [];
+const canvasState = []; // 점과 선 데이터를 모두 저장
 
 io.on('connection', (socket) => {
   userCount++;
@@ -20,17 +20,28 @@ io.on('connection', (socket) => {
   
   io.emit('userCount', userCount);
 
-  // 2초 지연주니까 새로고침 했을 때 이전 점들 불러오기 가능.
+  // 2초 안주니까 기존 정보를 못 불러옴.
   setTimeout(() => {
+    // console.log('전송할 canvasState:', canvasState)
+    // console.log('canvasState 타입:', typeof canvasState)
+    // console.log('canvasState 배열 여부:', Array.isArray(canvasState))
+    
     socket.emit('canvasState', canvasState);
+    // console.log(`기존 캔버스 상태 전송: ${canvasState.length}개`);
   }, 200);
-  
-  console.log(`기존 캔버스 상태 전송: ${canvasState.length}개 점`);
 
+  // 점 데이터 처리
   socket.on('point', (data) => {
     canvasState.push(data);
     console.log(`점 저장됨: (${data.x}, ${data.y}) - 총 ${canvasState.length}개`);
     socket.broadcast.emit('point', data);
+  });
+
+  // 선 데이터 처리 추가
+  socket.on('line', (data) => {
+    canvasState.push(data);
+    console.log(`선 저장됨: (${data.startX}, ${data.startY}) > (${data.endX}, ${data.endY}) - 총 ${canvasState.length}개`);
+    socket.broadcast.emit('line', data);
   });
 
   socket.on('clearCanvas', () => {

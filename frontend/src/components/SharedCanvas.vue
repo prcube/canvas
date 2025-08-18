@@ -4,6 +4,7 @@
     width="800"
     height="600"
     @click="handleClick"
+    @mousemove="handleMouseMove"
     :style="{ cursor: cursorStyle }"
   />
 </template>
@@ -12,7 +13,7 @@
 export default {
   name: 'SharedCanvas',
   inject: ['getSocket'],
-  props: ['selectedTool'],  // App.vue에서 선택된 도구를 받음
+  props: ['selectedTool'],
 
   computed: {
     actualSocket() {
@@ -22,7 +23,7 @@ export default {
     cursorStyle() {
       if (this.selectedTool === 'point') return 'crosshair'
       if (this.selectedTool === 'line') return 'copy'
-      return 'not-allowed'  // 도구 선택 안됨
+      return 'not-allowed'
     }
   },
   
@@ -30,7 +31,11 @@ export default {
     return {
       canvas: null,
       ctx: null,
-      socketListenerAdded: false
+      socketListenerAdded: false,
+      // 선 그리기를 위한 상태 추가
+      lineStartPoint: null,  // 선의 시작점
+      isDrawingLine: false,   // 선 그리기 모드 여부
+      previewLine: null       // 미리보기 선 정보
     }
   },
   
@@ -53,6 +58,7 @@ export default {
           console.log('소켓 이벤트 리스너 등록')
           
           newSocket.on('point', this.drawPoint)
+          newSocket.on('line', this.drawLine)  // 선 그리기 이벤트 추가
           newSocket.on('canvasState', this.loadCanvasState)
           newSocket.on('clearCanvas', this.handleClearCanvas)
           
@@ -61,17 +67,19 @@ export default {
       }, { immediate: true })
     },
 
-    loadCanvasState(points) {
-      console.log('기존 캔버스 상태 로드:', points.length + '개 점')
+    loadCanvasState(data) {
+      console.log('기존 캔버스 상태 로드:', data.length + '개 요소')
       
-      if (!points || !Array.isArray(points)) {
-        console.log('유효하지 않은 점 데이터')
+      if (!data || !Array.isArray(data)) {
+        console.log('유효하지 않은 캔버스 데이터')
         return
       }
       
-      points.forEach(point => {
-        if (point && typeof point.x === 'number' && typeof point.y === 'number') {
-          this.drawPoint(point, false)
+      data.forEach(item => {
+        if (item.type === 'point') {
+          this.drawPoint(item, false)
+        } else if (item.type === 'line') {
+          this.drawLine(item, false)
         }
       })
     },
@@ -79,10 +87,17 @@ export default {
     handleClearCanvas() {
       console.log('캔버스 지우기 신호 받음')
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+      // 선 그리기 상태도 초기화
+      this.resetLineDrawing()
+    },
+
+    resetLineDrawing() {
+      this.lineStartPoint = null
+      this.isDrawingLine = false
+      this.previewLine = null
     },
     
     handleClick(e) {
-      // 도구가 선택되지 않았으면 아무것도 하지 않음
       if (!this.selectedTool) {
         console.log('도구가 선택되지 않음 - 클릭 무시')
         return
@@ -98,22 +113,88 @@ export default {
       }
     },
 
+    //잔상남는거.
+    handleMouseMove(e) {
+      // if (this.selectedTool === 'line' && this.isDrawingLine) {
+      //   const x = e.offsetX
+      //   const y = e.offsetY
+      //   this.updatePreviewLine(x, y)
+      // }
+    },
+
     handlePointClick(x, y) {
       console.log('점 찍기:', x, y)
-      this.drawPoint({ x, y })
+      this.drawPoint({ type: 'point', x, y })
 
-      console.log('socket 존재:', !!this.actualSocket)
-      console.log('socket.emit 함수:', typeof this.actualSocket?.emit)
-      
       if (this.actualSocket?.connected) {
         console.log('point 데이터 전송:', x, y)
-        this.actualSocket.emit('point', { x, y })
+        this.actualSocket.emit('point', { type: 'point', x, y })
       }
     },
 
     handleLineClick(x, y) {
-      console.log('선 그리기 준비 중:', x, y)
-      // 선그리기 파트
+      if (!this.isDrawingLine) {
+        // 첫 번째 클릭: 시작점 설정
+        this.lineStartPoint = { x, y }
+        this.isDrawingLine = true
+        console.log('선 시작점 설정:', x, y)
+        
+        // 시작점에 작은 점 표시 (선택사항)
+        this.drawStartPoint(x, y)
+      } else {
+        // 두 번째 클릭: 끝점 설정하고 선 그리기
+        const lineData = {
+          type: 'line',
+          startX: this.lineStartPoint.x,
+          startY: this.lineStartPoint.y,
+          endX: x,
+          endY: y
+        }
+        
+        console.log('선 그리기 완료:', lineData)
+        this.drawLine(lineData)
+        
+        if (this.actualSocket?.connected) {
+          console.log('line 데이터 전송:', lineData)
+          this.actualSocket.emit('line', lineData)
+        }
+        
+        // 선 그리기 상태 초기화
+        this.resetLineDrawing()
+      }
+    },
+
+    updatePreviewLine(x, y) {
+      if (this.lineStartPoint) {
+        this.previewLine = {
+          startX: this.lineStartPoint.x,
+          startY: this.lineStartPoint.y,
+          endX: x,
+          endY: y
+        }
+        this.drawPreviewLine()
+      }
+    },
+
+    drawStartPoint(x, y) {
+      // 시작점에 작은 초록색 점 표시
+      this.ctx.beginPath()
+      this.ctx.arc(x, y, 2, 0, 2 * Math.PI)
+      this.ctx.fillStyle = '#28a745'
+      this.ctx.fill()
+    },
+
+    drawPreviewLine() {
+      if (this.previewLine) {
+        this.ctx.save()
+        this.ctx.setLineDash([5, 5]) // 점선으로 미리보기
+        this.ctx.strokeStyle = '#999'
+        this.ctx.beginPath()
+        this.ctx.moveTo(this.previewLine.startX, this.previewLine.startY)
+        this.ctx.lineTo(this.previewLine.endX, this.previewLine.endY)
+        this.ctx.stroke()
+        this.ctx.restore()
+      }
     },
     
     drawPoint(data, showLog = true) {
@@ -124,6 +205,31 @@ export default {
       this.ctx.arc(data.x, data.y, 3, 0, 2 * Math.PI)
       this.ctx.fillStyle = '#ff0000'
       this.ctx.fill()
+    },
+
+    drawLine(data, showLog = true) {
+      if (showLog) {
+        console.log('다른 사용자의 선 받음:', data)
+      }
+      
+      this.ctx.save()
+      this.ctx.strokeStyle = '#0000ff' // 파란색 선
+      this.ctx.lineWidth = 2
+      this.ctx.setLineDash([]) // 실선
+      this.ctx.beginPath()
+      this.ctx.moveTo(data.startX, data.startY)
+      this.ctx.lineTo(data.endX, data.endY)
+      this.ctx.stroke()
+      this.ctx.restore()
+    }
+  },
+
+  // 도구가 변경될 때 선 그리기 상태 초기화
+  watch: {
+    selectedTool(newTool) {
+      if (newTool !== 'line') {
+        this.resetLineDrawing()
+      }
     }
   }
 }
