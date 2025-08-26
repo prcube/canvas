@@ -13,10 +13,20 @@ const io = new Server(server, {
 
 let userCount = 0;
 const canvasState = []; // 점과 선 데이터를 모두 저장
+const activeEditors = new Set(); // 4명 제한
 
 io.on('connection', (socket) => {
   userCount++;
   console.log(`새 유저 접속: ${socket.id} (총 ${userCount}명)`);
+
+  // 4명 제한 체크
+  const canEdit = activeEditors.size < 4;
+  if (canEdit) {
+    activeEditors.add(socket.id);
+  }
+  
+  // 편집 권한 알림
+  socket.emit('editPermission', canEdit);  
   
   io.emit('userCount', userCount);
 
@@ -32,16 +42,20 @@ io.on('connection', (socket) => {
 
   // 점 데이터 처리
   socket.on('point', (data) => {
-    canvasState.push(data);
-    console.log(`점 저장됨: (${data.x}, ${data.y}) - 총 ${canvasState.length}개`);
-    socket.broadcast.emit('point', data);
+    if (activeEditors.has(socket.id)) {
+      canvasState.push(data);
+      console.log(`점 저장됨: (${data.x}, ${data.y}) - 총 ${canvasState.length}개`);
+      socket.broadcast.emit('point', data);
+    }
   });
 
   // 선 데이터 처리 추가
   socket.on('line', (data) => {
-    canvasState.push(data);
-    console.log(`선 저장됨: (${data.startX}, ${data.startY}) > (${data.endX}, ${data.endY}) - 총 ${canvasState.length}개`);
-    socket.broadcast.emit('line', data);
+    if (activeEditors.has(socket.id)) {
+      canvasState.push(data);
+      console.log(`선 저장됨: (${data.startX}, ${data.startY}) > (${data.endX}, ${data.endY}) - 총 ${canvasState.length}개`);
+      socket.broadcast.emit('line', data);
+    }
   });
 
   socket.on('clearCanvas', () => {
