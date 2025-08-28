@@ -86,7 +86,7 @@ export default {
 
   methods: {
     initSocket() {
-  this.socket = io('https://f1e38130469b.ngrok-free.app', {
+    this.socket = io('https://08dae0c92d71.ngrok-free.app', {
     transports: ['websocket', 'polling'],
     timeout: 20000,
     forceNew: true
@@ -109,6 +109,7 @@ export default {
       console.log('서버에 연결 시도:', this.socket.id)
     },
 
+    //접속승인
     handleConnectionAccepted(data) {
       console.log('접속 승인:', data)
       this.connected = true
@@ -116,6 +117,8 @@ export default {
       this.userCount = { current: data.userCount, max: data.maxUsers }
     },
 
+
+    //접속거부
     handleConnectionRejected(data) {
       console.log('접속 거부:', data)
       this.connectionRejected = true
@@ -138,6 +141,8 @@ export default {
       this.connected = false
     },
 
+
+    //재연결 로직
     retryConnection() {
       console.log('재연결 시도')
       this.connectionRejected = false

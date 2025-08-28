@@ -13,7 +13,7 @@
 export default {
   name: 'SharedCanvas',
   inject: ['getSocket'],
-  props: ['selectedTool'],
+  props: ['selectedTool'], //도구 선택하기
 
   computed: {
     actualSocket() {
@@ -30,7 +30,7 @@ export default {
   data() {
     return {
       canvas: null,
-      ctx: null,
+      ctx: null, //캔버스부분
       socketListenerAdded: false,
       // 선 그리기를 위한 상태 추가
       lineStartPoint: null,  // 선의 시작점
@@ -67,6 +67,7 @@ export default {
       }, { immediate: true })
     },
 
+    //기존 캔버스 로딩하기
     loadCanvasState(data) {
       console.log('기존 캔버스 상태 로드:', data.length + '개 요소')
       
@@ -84,6 +85,7 @@ export default {
       })
     },
 
+    //캔버스지우기
     handleClearCanvas() {
       console.log('캔버스 지우기 신호 받음')
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
@@ -164,38 +166,38 @@ export default {
       }
     },
 
-    updatePreviewLine(x, y) {
-      if (this.lineStartPoint) {
-        this.previewLine = {
-          startX: this.lineStartPoint.x,
-          startY: this.lineStartPoint.y,
-          endX: x,
-          endY: y
-        }
-        this.drawPreviewLine()
-      }
-    },
+    // updatePreviewLine(x, y) {
+    //   if (this.lineStartPoint) {
+    //     this.previewLine = {
+    //       startX: this.lineStartPoint.x,
+    //       startY: this.lineStartPoint.y,
+    //       endX: x,
+    //       endY: y
+    //     }
+    //     this.drawPreviewLine()
+    //   }
+    // },
 
-    drawStartPoint(x, y) {
-      // 시작점에 작은 초록색 점 표시
-      this.ctx.beginPath()
-      this.ctx.arc(x, y, 2, 0, 2 * Math.PI)
-      this.ctx.fillStyle = '#28a745'
-      this.ctx.fill()
-    },
+    // drawStartPoint(x, y) {
+    //   // 시작점에 작은 초록색 점 표시
+    //   this.ctx.beginPath()
+    //   this.ctx.arc(x, y, 2, 0, 2 * Math.PI)
+    //   this.ctx.fillStyle = '#28a745'
+    //   this.ctx.fill()
+    // },
 
-    drawPreviewLine() {
-      if (this.previewLine) {
-        this.ctx.save()
-        this.ctx.setLineDash([5, 5]) // 점선으로 미리보기
-        this.ctx.strokeStyle = '#999'
-        this.ctx.beginPath()
-        this.ctx.moveTo(this.previewLine.startX, this.previewLine.startY)
-        this.ctx.lineTo(this.previewLine.endX, this.previewLine.endY)
-        this.ctx.stroke()
-        this.ctx.restore()
-      }
-    },
+    // drawPreviewLine() {
+    //   if (this.previewLine) {
+    //     this.ctx.save()
+    //     this.ctx.setLineDash([5, 5]) // 점선으로 미리보기
+    //     this.ctx.strokeStyle = '#999'
+    //     this.ctx.beginPath()
+    //     this.ctx.moveTo(this.previewLine.startX, this.previewLine.startY)
+    //     this.ctx.lineTo(this.previewLine.endX, this.previewLine.endY)
+    //     this.ctx.stroke()
+    //     this.ctx.restore()
+    //   }
+    // },
     
     drawPoint(data, showLog = true) {
       if (showLog) {

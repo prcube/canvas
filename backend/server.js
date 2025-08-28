@@ -11,8 +11,8 @@ const io = new Server(server, {
   }
 });
 
-let userCount = 0;
-const canvasState = [];
+let userCount = 0; //현재 접속자 수
+const canvasState = []; //캔버스에 그린 요소들
 const activeUsers = new Set(); // 접속자들
 const MAX_USERS = 4; // 최대 사용자 
 
