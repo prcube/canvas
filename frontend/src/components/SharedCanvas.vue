@@ -139,7 +139,7 @@ export default {
         this.isDrawingLine = true
         console.log('선 시작점 설정:', x, y)
         
-        // 시작점에 작은 점 표시 (선택사항)
+        // 시작점에 작은 점 표시
         this.drawStartPoint(x, y)
       } else {
         // 두 번째 클릭: 끝점 설정하고 선 그리기

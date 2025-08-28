@@ -12,46 +12,59 @@ const io = new Server(server, {
 });
 
 let userCount = 0;
-const canvasState = []; // 점과 선 데이터를 모두 저장
-const activeEditors = new Set(); // 4명 제한
+const canvasState = [];
+const activeUsers = new Set(); // 접속자들
+const MAX_USERS = 4; // 최대 사용자 
 
 io.on('connection', (socket) => {
-  userCount++;
-  console.log(`새 유저 접속: ${socket.id} (총 ${userCount}명)`);
-
-  // 4명 제한 체크
-  const canEdit = activeEditors.size < 4;
-  if (canEdit) {
-    activeEditors.add(socket.id);
+  // 4명 제한
+  if (activeUsers.size >= MAX_USERS) {
+    console.log(`접속 거부: ${socket.id} (최대 ${MAX_USERS}명 초과)`);
+    socket.emit('connectionRejected', { 
+      reason: 'MAX_USERS_EXCEEDED',
+      maxUsers: MAX_USERS,
+      currentUsers: activeUsers.size
+    });
+    socket.disconnect(true);
+    return;
   }
-  
-  // 편집 권한 알림
-  socket.emit('editPermission', canEdit);  
-  
-  io.emit('userCount', userCount);
 
-  // 2초 안주니까 기존 정보를 못 불러옴.
+  // 사용자 추가
+  activeUsers.add(socket.id);
+  userCount = activeUsers.size;
+  console.log(`새 유저 접속: ${socket.id} (총 ${userCount}명/${MAX_USERS}명)`);
+  
+  // 사용자 수 알림
+  io.emit('userCount', {
+    current: userCount,
+    max: MAX_USERS
+  });
+
+  // 접속 성공 알림
+  socket.emit('connectionAccepted', {
+    userId: socket.id,
+    userCount: userCount,
+    maxUsers: MAX_USERS
+  });
+
+  // 기존 캔버스 상태 전송
   setTimeout(() => {
-    // console.log('전송할 canvasState:', canvasState)
-    // console.log('canvasState 타입:', typeof canvasState)
-    // console.log('canvasState 배열 여부:', Array.isArray(canvasState))
-    
     socket.emit('canvasState', canvasState);
-    // console.log(`기존 캔버스 상태 전송: ${canvasState.length}개`);
+    console.log(`기존 캔버스 상태 전송: ${canvasState.length}개`);
   }, 200);
 
-  // 점 데이터 처리
+  // 점 그리기
   socket.on('point', (data) => {
-    if (activeEditors.has(socket.id)) {
+    if (activeUsers.has(socket.id)) {
       canvasState.push(data);
       console.log(`점 저장됨: (${data.x}, ${data.y}) - 총 ${canvasState.length}개`);
       socket.broadcast.emit('point', data);
     }
   });
 
-  // 선 데이터 처리 추가
+  // 선 그리기
   socket.on('line', (data) => {
-    if (activeEditors.has(socket.id)) {
+    if (activeUsers.has(socket.id)) {
       canvasState.push(data);
       console.log(`선 저장됨: (${data.startX}, ${data.startY}) > (${data.endX}, ${data.endY}) - 총 ${canvasState.length}개`);
       socket.broadcast.emit('line', data);
@@ -59,18 +72,29 @@ io.on('connection', (socket) => {
   });
 
   socket.on('clearCanvas', () => {
-    canvasState.length = 0;
-    console.log('캔버스가 초기화되었습니다');
-    io.emit('clearCanvas');
+    if (activeUsers.has(socket.id)) {
+      canvasState.length = 0;
+      console.log('캔버스가 초기화되었습니다');
+      io.emit('clearCanvas');
+    }
   });
 
   socket.on('disconnect', () => {
-    userCount--;
-    console.log(`유저 연결 해제: ${socket.id} (총 ${userCount}명)`);
-    io.emit('userCount', userCount);
+    activeUsers.delete(socket.id); // 사용자제거
+    userCount = activeUsers.size;
+    console.log(`유저 연결 해제: ${socket.id} (총 ${userCount}명/${MAX_USERS}명)`);
+    
+    // 변경된 사용자수
+    io.emit('userCount', {
+      current: userCount,
+      max: MAX_USERS
+    });
   });
 });
 
-server.listen(3000, () => {
-  console.log('서버 실행 중: http://localhost:3000');
+//백 서버 세팅
+server.listen(3000, '0.0.0.0', () => {
+  console.log('서버 실행 중: http://0.0.0.0:3000');
+  console.log(`최대 동시 접속자: ${MAX_USERS}명`);
 });
+
